@@ -28,7 +28,7 @@ Our motivation for choosing this project is that it combines hardware reuse with
 
 ### 3. System Block Diagram
 
-![1773617041483](image/README/1773617041483.png)
+![1773633032791](image/README/1773633032791.png)
 
 ### 4. Design Sketches
 
