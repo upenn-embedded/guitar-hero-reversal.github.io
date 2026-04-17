@@ -80,11 +80,9 @@ Our motivation for choosing this project is that it combines hardware reuse with
 | ID     | Description                                                                                                                                                                                                    |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | HRS-01 | The system shall use an ATmega328PB-based control system to interface with all required user inputs, including the pitch buttons, strum input, mute button, joystick, and whammy control                      |
-| HRS-02 | The system shall include a DAC-based pitch CV generation stage capable of producing a stable control signal for the synthesizer voice                                                                         |
-| HRS-03 | The synthesizer hardware shall include, at minimum, a VCO, VCF, and VCA signal chain capable of producing an audible musical output in response to MCU-generated control signals                              |
-| HRS-04 | The system shall include an audio output stage consisting of a buffer and power amplifier capable of driving a speaker or external audio output                                                               |
-| HRS-05 | The system shall include a display module for showing menu or mode information and shall communicate with the MCU using a supported serial protocol such as  I2C .                                             |
-| HRS-06 | The system shall provide regulated power rails as required by the design, including support forlogic-level supply and  analog/audio supply\, so that all components operate within their rated voltage ranges. |
+| HRS-02 | The system shall include a DAC-based pitch CV generation stage capable of producing a stable control signal for the synthesizer voice                                                                           |
+| HRS-03 | The system shall include an audio output stage consisting of a buffer and power amplifier capable of driving a speaker or external audio output                                                               |
+| HRS-04 | The system shall include a display module for showing menu or mode information and shall communicate with the MCU using a supported serial protocol such as  I2C .                                             |
 
 ### 7. Bill of Materials (BOM)
 
