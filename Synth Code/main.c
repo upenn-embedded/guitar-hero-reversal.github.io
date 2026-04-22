@@ -1,7 +1,3 @@
-#ifndef F_CPU
-#define F_CPU 16000000UL
-#endif
-
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdint.h>
@@ -11,30 +7,34 @@
 #include "spi_dac.h"
 #include "synth.h"
 #include "inputs.h"
-#include "notes.h"
-#include "display.h"
 
-/*
- * Buzzer-debug note map chosen to be clearly different on a passive piezo.
- * You can swap these back later if you want the original guitar-string map.
- */
-static const uint8_t fret_note_map[5] = {
-    GUITAR_NOTE_C3,   /* GREEN  */
-    GUITAR_NOTE_E3,   /* RED    */
-    GUITAR_NOTE_G3,   /* YELLOW */
-    GUITAR_NOTE_B3,   /* BLUE   */
-    GUITAR_NOTE_E4,   /* ORANGE */
+#ifndef F_CPU
+#define F_CPU 16000000UL
+#endif
+
+#define WHAMMY_SCAN_MS             10UL
+#define VIBRATO_TICK_MS             8UL
+#define WHAMMY_ADC_CUTOFF         614U   /* ~3.00 V with AVcc = 5 V */
+#define WHAMMY_ADC_MAX            941U   /* ~4.60 V with AVcc = 5 V */
+#define WHAMMY_MAX_VIBRATO_PCT      6U
+
+static const uint8_t fret_chord_map[5] = {
+    CHORD_D4,
+    CHORD_F4,
+    CHORD_G4,
+    CHORD_AB4,
+    CHORD_D5,
 };
 
-static volatile uint8_t g_active_fret          = FRET_NONE;
-static volatile uint8_t g_fret_changed         = 0U;
-static volatile uint8_t g_strum_pressed        = 0U;
-static volatile uint8_t g_strum_released       = 0U;
-static volatile uint8_t g_button_press_flags   = 0U;
-static volatile uint8_t g_button_release_flags = 0U;
+static volatile uint8_t  g_active_fret          = FRET_NONE;
+static volatile uint8_t  g_fret_changed         = 0U;
+static volatile uint8_t  g_strum_pressed        = 0U;
+static volatile uint8_t  g_strum_released       = 0U;
+static volatile uint8_t  g_button_press_flags   = 0U;
+static volatile uint8_t  g_button_release_flags = 0U;
+static volatile uint32_t g_ms_tick              = 0UL;
 
-static uint8_t g_strum_down       = 0U;
-static uint8_t g_display_note_idx = GUITAR_NOTE_C3;
+static uint8_t g_strum_down = 0U;
 
 static const char *fret_name(uint8_t fret)
 {
@@ -48,55 +48,35 @@ static const char *fret_name(uint8_t fret)
     }
 }
 
-static void note_name_local(uint8_t idx, char out[4])
+static const char *chord_name_for_fret(uint8_t fret)
 {
-    static const char note_names[NUM_GUITAR_NOTES][4] = {
-        "E2",  "F2",  "F#2", "G2",  "G#2",
-        "A2",  "A#2", "B2",  "C3",  "C#3",
-        "D3",  "D#3", "E3",  "F3",  "F#3",
-        "G3",  "G#3", "A3",  "A#3", "B3",
-        "C4",  "C#4", "D4",  "D#4", "E4"
-    };
-
-    if (idx < NUM_GUITAR_NOTES) {
-        out[0] = note_names[idx][0];
-        out[1] = note_names[idx][1];
-        out[2] = note_names[idx][2];
-        out[3] = '\0';
-    } else {
-        out[0] = '?';
-        out[1] = '?';
-        out[2] = '?';
-        out[3] = '\0';
+    switch (fret) {
+    case 0U: return "D4 chord";
+    case 1U: return "F4 chord";
+    case 2U: return "G4 chord";
+    case 3U: return "Ab4 chord";
+    case 4U: return "D5 chord";
+    default: return "NONE";
     }
 }
 
-static const char *note_name_for_fret(uint8_t fret)
+static uint8_t vibrato_depth_from_adc(uint16_t adc)
 {
-    static char buf[4];
+    uint32_t scaled;
 
-    if (fret < 5U) {
-        note_name_local(fret_note_map[fret], buf);
-        return buf;
+    if (adc < WHAMMY_ADC_CUTOFF) {
+        return 0U;
+    }
+    if (adc >= WHAMMY_ADC_MAX) {
+        return WHAMMY_MAX_VIBRATO_PCT;
     }
 
-    return "NONE";
+    scaled = ((uint32_t)(adc - WHAMMY_ADC_CUTOFF) * WHAMMY_MAX_VIBRATO_PCT)
+           / (uint32_t)(WHAMMY_ADC_MAX - WHAMMY_ADC_CUTOFF);
+
+    return (uint8_t)scaled;
 }
 
-static void display_refresh_now(void)
-{
-    uint8_t muted = 1U;
-    uint8_t strumming = 0U;
-
-    if ((g_active_fret < 5U) && g_strum_down) {
-        muted = 0U;
-        strumming = 1U;
-    }
-
-    display_update_ui(g_display_note_idx, 0U, muted, strumming);
-}
-
-/* 1 ms system tick for debounce. */
 static void timer0_init(void)
 {
     TCCR0A = (1 << WGM01);
@@ -107,6 +87,7 @@ static void timer0_init(void)
 
 ISR(TIMER0_COMPA_vect)
 {
+    g_ms_tick++;
     inputs_tick();
 }
 
@@ -142,38 +123,42 @@ void on_strum_release(void)
 
 int main(void)
 {
+    uint32_t last_vibrato_ms = 0UL;
+    uint32_t last_whammy_ms  = 0UL;
+    uint8_t  last_vibrato_pct = 0xFFU;
+
     uart_init();
     printf("\r\nGuitar Hero input debug start\r\n");
-    printf("Watching GREEN, RED, YELLOW, BLUE, ORANGE, and STRUM\r\n");
+    printf("Watching GREEN, RED, YELLOW, BLUE, ORANGE, STRUM, and WHAMMY\r\n");
 
     pwm_audio_init();
     synth_init();
+    synth_set_vibrato_depth(0U);
     inputs_init();
     timer0_init();
 
-    display_init();
-    g_display_note_idx = fret_note_map[0];
-    display_refresh_now();
-
     printf("System initialized\r\n");
-    printf("PB2 buzzer mode: silent until strum, then play selected note\r\n");
+    printf("PB2 speaker mode: true 3-note chords in one PWM stream\r\n");
+    printf("Whammy vibrato cutoff: below 3.0 V = no vibrato\r\n");
 
     sei();
 
     for (;;) {
         uint8_t press_flags;
         uint8_t release_flags;
+        uint32_t now_ms;
 
         cli();
         press_flags = g_button_press_flags;
         g_button_press_flags = 0U;
         release_flags = g_button_release_flags;
         g_button_release_flags = 0U;
+        now_ms = g_ms_tick;
         sei();
 
         for (uint8_t i = 0U; i < 5U; i++) {
             if (press_flags & (1U << i)) {
-                printf("%s pressed -> %s\r\n", fret_name(i), note_name_for_fret(i));
+                printf("%s pressed -> %s\r\n", fret_name(i), chord_name_for_fret(i));
             }
             if (release_flags & (1U << i)) {
                 printf("%s released\r\n", fret_name(i));
@@ -182,7 +167,6 @@ int main(void)
 
         if (g_fret_changed) {
             uint8_t fret;
-
             cli();
             fret = g_active_fret;
             g_fret_changed = 0U;
@@ -190,20 +174,14 @@ int main(void)
 
             printf("Active fret: %s\r\n", fret_name(fret));
 
-            if (fret < 5U) {
-                g_display_note_idx = fret_note_map[fret];
-            }
-            display_refresh_now();
-
             if (g_strum_down) {
                 if (fret < 5U) {
-                    synth_set_note(fret_note_map[fret]);
-                    printf("Now playing %s\r\n", note_name_for_fret(fret));
+                    synth_set_chord(fret_chord_map[fret]);
+                    printf("Now playing %s\r\n", chord_name_for_fret(fret));
                 } else {
                     synth_mute();
                     printf("No fret held, output muted\r\n");
                 }
-                display_refresh_now();
             }
         }
 
@@ -216,15 +194,12 @@ int main(void)
             printf("STRUM pressed\r\n");
 
             if (g_active_fret < 5U) {
-                g_display_note_idx = fret_note_map[g_active_fret];
-                synth_set_note(fret_note_map[g_active_fret]);
-                printf("Playing %s\r\n", note_name_for_fret(g_active_fret));
+                synth_set_chord(fret_chord_map[g_active_fret]);
+                printf("Playing %s\r\n", chord_name_for_fret(g_active_fret));
             } else {
                 synth_mute();
                 printf("No fret held, output muted\r\n");
             }
-
-            display_refresh_now();
         }
 
         if (g_strum_released) {
@@ -235,7 +210,36 @@ int main(void)
             g_strum_down = 0U;
             printf("STRUM released\r\n");
             synth_mute();
-            display_refresh_now();
+        }
+
+        if ((uint32_t)(now_ms - last_whammy_ms) >= WHAMMY_SCAN_MS) {
+            uint16_t whammy_adc;
+            uint8_t vibrato_pct;
+
+            last_whammy_ms = now_ms;
+            inputs_adc_scan();
+            whammy_adc = inputs_whammy;
+            vibrato_pct = vibrato_depth_from_adc(whammy_adc);
+
+            if (vibrato_pct == 0U) {
+                synth_set_vibrato_depth(0U);
+                synth_reset_vibrato();
+            } else {
+                synth_set_vibrato_depth(vibrato_pct);
+            }
+
+            if (vibrato_pct != last_vibrato_pct) {
+                last_vibrato_pct = vibrato_pct;
+                //printf("Whammy ADC=%u -> vibrato depth=%u%%\r\n",
+                       //(unsigned)whammy_adc,
+                       //(unsigned)vibrato_pct);
+            }
+        }
+
+        if (g_strum_down && last_vibrato_pct > 0U &&
+            (uint32_t)(now_ms - last_vibrato_ms) >= VIBRATO_TICK_MS) {
+            last_vibrato_ms = now_ms;
+            synth_vibrato_tick();
         }
     }
 }

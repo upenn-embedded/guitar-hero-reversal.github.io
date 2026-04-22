@@ -8,7 +8,10 @@
 #define BLUE_PIN         PD5
 #define ORANGE_PIN       PD6
 #define STRUM_PIN        PD7
+#define WHAMMY_ADC_CH    0U      /* PC0 / ADC0 */
 #define DEBOUNCE_THRESH  3U
+
+volatile uint16_t inputs_whammy = 0U;
 
 static uint8_t fret_cnt[5] = {0U, 0U, 0U, 0U, 0U};
 static uint8_t fret_state   = 0U;
@@ -30,6 +33,15 @@ static uint8_t read_frets_raw(void)
     return raw;
 }
 
+static uint16_t adc_read(uint8_t channel)
+{
+    ADMUX = (1 << REFS0) | (channel & 0x07U);
+    ADCSRA |= (1 << ADSC);
+    while (ADCSRA & (1 << ADSC)) {
+    }
+    return ADC;
+}
+
 void inputs_init(void)
 {
     DDRD  &= ~((1 << GREEN_PIN) | (1 << RED_PIN) | (1 << YELLOW_PIN) |
@@ -38,6 +50,17 @@ void inputs_init(void)
     /* No internal pull-ups because the controller drives 0 V / 5 V actively. */
     PORTD &= ~((1 << GREEN_PIN) | (1 << RED_PIN) | (1 << YELLOW_PIN) |
                (1 << BLUE_PIN)  | (1 << ORANGE_PIN) | (1 << STRUM_PIN));
+
+    /* Whammy stick on PC0 / ADC0, no pull-up. */
+    DDRC  &= ~(1 << DDC0);
+    PORTC &= ~(1 << PORTC0);
+
+    /* ADC: AVcc reference, prescaler 128 for stable reads at 16 MHz. */
+    ADMUX  = (1 << REFS0) | WHAMMY_ADC_CH;
+    ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+
+    /* Prime first conversion. */
+    inputs_whammy = adc_read(WHAMMY_ADC_CH);
 }
 
 void inputs_tick(void)
@@ -69,19 +92,17 @@ void inputs_tick(void)
     }
 
     /* Priority: green, then red, yellow, blue, orange if multiple are held. */
-    {
-        uint8_t cur_fret = FRET_NONE;
-        for (uint8_t i = 0U; i < 5U; i++) {
-            if (fret_state & (1U << i)) {
-                cur_fret = i;
-                break;
-            }
+    uint8_t cur_fret = FRET_NONE;
+    for (uint8_t i = 0U; i < 5U; i++) {
+        if (fret_state & (1U << i)) {
+            cur_fret = i;
+            break;
         }
+    }
 
-        if (cur_fret != last_fret) {
-            last_fret = cur_fret;
-            on_fret_change(cur_fret);
-        }
+    if (cur_fret != last_fret) {
+        last_fret = cur_fret;
+        on_fret_change(cur_fret);
     }
 
     {
@@ -106,4 +127,9 @@ void inputs_tick(void)
             on_strum_release();
         }
     }
+}
+
+void inputs_adc_scan(void)
+{
+    inputs_whammy = adc_read(WHAMMY_ADC_CH);
 }
