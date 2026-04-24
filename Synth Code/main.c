@@ -1,5 +1,5 @@
 /*
- * main.c — Display-driven power-chord synth.
+ * main.c ? Display-driven power-chord synth.
  *
  * The display stores one ROOT note per on-screen button.
  * A strum plays a sustained/fading POWER CHORD built from that root.
@@ -130,7 +130,25 @@ void on_button_release(uint8_t fret)
 
 void on_strum_press(void)     { g_strum_pressed     = 1U; }
 void on_strum_release(void)   { g_strum_released    = 1U; }
-void on_mute_press(void)      { g_mute_pressed      = 1U; }
+void on_mute_press(void)
+{
+    /*
+     * Call synth_mute() directly here rather than via flag + main loop.
+     *
+     * on_mute_press() fires from inputs_tick() inside the Timer0 ISR.
+     * If we only set a flag, mute is delayed until the main loop
+     * processes it ? which can be up to ~60 ms if a display redraw is
+     * in progress.  Calling synth_mute() directly gives instant silence
+     * on the same 1 ms tick that the button press was registered.
+     *
+     * synth_mute() uses SREG save/cli/restore so it is ISR-safe.
+     *
+     * g_mute_pressed is still set so the main loop can handle the
+     * vibrato reset and UART print without duplicating logic here.
+     */
+    synth_mute();
+    g_mute_pressed = 1U;
+}
 void on_joy_click_press(void) { g_joy_click_pressed = 1U; }
 
 int main(void)
@@ -143,7 +161,7 @@ int main(void)
     uint8_t  joy_y_armed      = 1U;
 
     uart_init();
-    printf("\r\nGuitar Hero Synth — boot\r\n");
+    printf("\r\nGuitar Hero Synth ? boot\r\n");
 
     pwm_audio_init();
     synth_init();
