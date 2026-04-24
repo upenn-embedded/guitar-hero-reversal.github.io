@@ -1,18 +1,18 @@
 /*
- * main.c — System init and main loop
- * ESE3500 Final Project — Guitar Synthesizer Controller
+ * main.c â System init and main loop
+ * ESE3500 Final Project â Guitar Synthesizer Controller
  * Team 3: Synth Specialist (Guitar Hero Edition)
- * University of Pennsylvania — Spring 2026
+ * University of Pennsylvania â Spring 2026
  *
  * Authors: Adam Shalabi, Brandon Parkansky, Panos Dimtsoudis
  *
- * ── Init order ───────────────────────────────────────────────────
+ * ââ Init order âââââââââââââââââââââââââââââââââââââââââââââââââââ
  *   uart_init()       9600 baud TX/RX
  *   pwm_audio_init()  Timer1 Fast PWM on OC1B
  *   synth_init()      DDS engine + Timer2 ISR
  *   inputs_init()     GPIO, ADC, PCINT
  *   timer0_init()     1 ms system tick (Timer0 CTC)
- *   display_init()    ST7796S LCD — call before sei()
+ *   display_init()    ST7796S LCD â call before sei()
  *   sei()
  */
 
@@ -32,14 +32,14 @@
 #include "notes.h"
 #include "display.h"
 
-/* ── Joystick ADC thresholds ────────────────────────────────────── */
+/* ââ Joystick ADC thresholds ââââââââââââââââââââââââââââââââââââââ */
 #define JOY_SCAN_MS         20UL
 #define JOY_LOW_THRESHOLD  120U
 #define JOY_HIGH_THRESHOLD 900U
 #define JOY_CENTER_LOW     430U
 #define JOY_CENTER_HIGH    590U
 
-/* ── Volatile event flags (set by callbacks, cleared in main loop) ─ */
+/* ââ Volatile event flags (set by callbacks, cleared in main loop) â */
 static volatile uint8_t  g_active_fret          = FRET_NONE;
 static volatile uint8_t  g_fret_changed         = 0U;
 static volatile uint8_t  g_strum_pressed        = 0U;
@@ -56,7 +56,7 @@ static uint8_t g_strum_latched = 0U;
 /* Maps fret index (0-4) to synth chord index (0-4) */
 static const uint8_t fret_chord_map[5] = { 0U, 1U, 2U, 3U, 4U };
 
-/* ── Helpers ────────────────────────────────────────────────────── */
+/* ââ Helpers ââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
 static const char *fret_name(uint8_t fret)
 {
@@ -87,7 +87,7 @@ ISR(TIMER0_COMPA_vect)
     synth_decay_tick_1ms();
 }
 
-/* ── Input callbacks (called from inputs_tick / strum ISR) ─────── */
+/* ââ Input callbacks (called from inputs_tick / strum ISR) âââââââ */
 
 void on_fret_change(uint8_t fret)
 {
@@ -114,7 +114,7 @@ void on_strum_release(void){ g_strum_released = 1U; }
 void on_mute_press(void)   { g_mute_pressed   = 1U; }
 void on_joy_click_press(void) { g_joy_click_pressed = 1U; }
 
-/* ── Main ───────────────────────────────────────────────────────── */
+/* ââ Main âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 int main(void)
 {
     uint32_t last_joy_ms      = 0UL;
@@ -125,13 +125,13 @@ int main(void)
     uint8_t  joy_y_armed      = 1U;
 
     uart_init();
-    printf("\r\nGuitar Hero Synth — boot\r\n");
+    printf("\r\nGuitar Hero Synth â boot\r\n");
 
     pwm_audio_init();
     synth_init();
     inputs_init();
     timer0_init();
-    display_init();   /* draws full UI — must be before sei() */
+    display_init();   /* draws full UI â must be before sei() */
 
     printf("System ready\r\n");
     printf("Joystick Y = button select, X = note scroll, click = commit\r\n");
@@ -140,7 +140,7 @@ int main(void)
 
     for (;;) {
 
-        /* ── Atomically snapshot and clear all flags ─────────────── */
+        /* ââ Atomically snapshot and clear all flags âââââââââââââââ */
         uint8_t  press_flags;
         uint8_t  release_flags;
         uint32_t now_ms;
@@ -153,7 +153,7 @@ int main(void)
         now_ms                   = g_ms_tick;
         sei();
 
-        /* ── Log button press/release over UART ──────────────────── */
+        /* ââ Log button press/release over UART ââââââââââââââââââââ */
         for (uint8_t i = 0U; i < 5U; i++) {
             if (press_flags & (1U << i)) {
                 char nm[4];
@@ -165,7 +165,7 @@ int main(void)
             }
         }
 
-        /* ── Fret change ─────────────────────────────────────────── */
+        /* ââ Fret change âââââââââââââââââââââââââââââââââââââââââââ */
         if (g_fret_changed) {
             uint8_t fret;
             cli(); fret = g_active_fret; g_fret_changed = 0U; sei();
@@ -182,7 +182,7 @@ int main(void)
             }
         }
 
-        /* ── Strum press ─────────────────────────────────────────── */
+        /* ââ Strum press âââââââââââââââââââââââââââââââââââââââââââ */
         if (g_strum_pressed) {
             cli(); g_strum_pressed = 0U; sei();
 
@@ -203,7 +203,7 @@ int main(void)
             }
         }
 
-        /* ── Strum release ───────────────────────────────────────── */
+        /* ââ Strum release âââââââââââââââââââââââââââââââââââââââââ */
         if (g_strum_released) {
             cli(); g_strum_released = 0U; sei();
             g_strum_latched = 0U;
@@ -211,7 +211,7 @@ int main(void)
             printf("STRUM released\r\n");
         }
 
-        /* ── Mute button ─────────────────────────────────────────── */
+        /* ââ Mute button âââââââââââââââââââââââââââââââââââââââââââ */
         if (g_mute_pressed) {
             cli(); g_mute_pressed = 0U; sei();
             synth_mute();
@@ -221,7 +221,7 @@ int main(void)
             printf("MUTE pressed\r\n");
         }
 
-        /* ── Joystick click → commit note assignment ─────────────── */
+        /* ââ Joystick click â commit note assignment âââââââââââââââ */
         if (g_joy_click_pressed) {
             cli(); g_joy_click_pressed = 0U; sei();
 
@@ -234,7 +234,7 @@ int main(void)
             printf("Saved %s to %s\r\n", nm, fret_name(btn));
         }
 
-        /* ── Joystick ADC scan (every JOY_SCAN_MS) ───────────────── */
+        /* ââ Joystick ADC scan (every JOY_SCAN_MS) âââââââââââââââââ */
         if ((uint32_t)(now_ms - last_joy_ms) >= JOY_SCAN_MS) {
             last_joy_ms = now_ms;
             inputs_adc_scan();
@@ -243,7 +243,7 @@ int main(void)
             uint16_t joy_y   = inputs_joy_y;
             uint16_t joy_x   = inputs_joy_x;
 
-            /* Y axis → move button selection up/down */
+            /* Y axis â move button selection up/down */
             if (joy_y_armed) {
                 if (joy_y <= JOY_LOW_THRESHOLD) {
                     display_move_button_selection(-1);
@@ -256,7 +256,7 @@ int main(void)
                 joy_y_armed = 1U;   /* re-arm once joystick returns to centre */
             }
 
-            /* X axis → scroll note wheel */
+            /* X axis â scroll note wheel */
             if (joy_x_armed) {
                 if (joy_x <= JOY_LOW_THRESHOLD) {
                     display_move_note_selection(-1, now_ms);
@@ -269,9 +269,9 @@ int main(void)
                 joy_x_armed = 1U;
             }
 
-            /* Whammy → vibrato depth
+            /* Whammy â vibrato depth
              * Below ~60 % of travel: no vibrato
-             * 60–92 %: ramp vibrato 0→4
+             * 60â92 %: ramp vibrato 0â4
              * Above 92 %: max vibrato (4)                           */
             uint8_t vibrato_pct;
             if (last_whammy_adc < 614U) {
@@ -294,7 +294,7 @@ int main(void)
             }
         }
 
-        /* ── Vibrato LFO tick (every 10 ms while active) ─────────── */
+        /* ââ Vibrato LFO tick (every 10 ms while active) âââââââââââ */
         if (synth_is_active() && last_vibrato_pct > 0U &&
             (uint32_t)(now_ms - last_vibrato_ms) >= 10UL) {
             last_vibrato_ms = now_ms;
