@@ -37,9 +37,7 @@ Our project converts a Guitar Hero controller into a playable electronic synthes
 | SRS-03 | The system shall read the whammy input through the ADC and update pitch bend during active note playback. | CONFIRMED: ADC detects whammy adjustments, vibrato added through code at threshold.                                                                                                                                   
 | SRS-04 | The system shall support a mute function that disables note output when the mute button being pressed. | CONFIRMED: Mute button pulls mute pin, PWM stops when pressed.                                                                                                                                    
 | SRS-05 | The firmware shall continuously monitor all required inputs during operation, including pitch buttons, strum bar, mute button, joystick, and whammy control, without causing the system to miss valid note-trigger events during normal use. | CONFIRMED: Essential inputs trigger interrupt, there is no latency or missed events when playing device. 
-| SRS-06 | The display and joystick-based UI shall allow the user to change at least one synth setting (such as waveform, octave, or mode), and the selected setting shall be updated on the display. | CONFIRMED: Joystick controls screen, user can change configuration of notes, selection shows onscreen.                                                 
-/
-
+| SRS-06 | The display and joystick-based UI shall allow the user to change at least one synth setting (such as waveform, octave, or mode), and the selected setting shall be updated on the display. | CONFIRMED: Joystick controls screen, user can change configuration of notes, selection shows onscreen.                                            
 ## Hardware Requirements Specification (HRS) Results
 
 | ID     | Description                                                                                                                        | Validation Outcome                                                                                                      |
