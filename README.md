@@ -96,10 +96,10 @@ We will first demonstrate the functionality of the joystick selector and display
 
 | Milestone  | Functionality Achieved           | Distribution of Work                    |
 | ---------- | -------------------------------- | --------------------------------------- |
-| Sprint #1  | Get Guitar and MCU communicating | We'll figure it out - but work together |
-| Sprint #2  | Complete MCU Code (Synth)        | ~~                                      |
-| MVP Demo   | Make Synth and Speaker work      | ~~                                      |
-| Final Demo | Add Display and Whammy Stick     | ~~                                      |
+| Sprint #1  | Get Guitar and MCU communicating | Everyone works, if unfinished Adam will finish|
+| Sprint #2  | Complete MCU Code (Synth)        | Everyone works, if unfinished Panos will finish|
+| MVP Demo   | Make Synth and Speaker work      | Everyone works (Adam and Panos focus on hardware, Brandon focus on code)|
+| Final Demo | Add Display and Whammy Stick     | Everyone works together to assemble final product. If something breaks, member who had most input on this part will lead in fixing.|
 
 **This is the end of the Project Proposal section. The remaining sections will be filled out based on the milestone schedule.**
 
