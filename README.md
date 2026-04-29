@@ -1,5 +1,10 @@
 # Guitar Hero Guitar to Synthesizer Conversion
 
+| Panos Dimtsoudis  | panosdim@seas.upenn.edu |
+| Adam Shalabi      | adamshal@seas.upenn.edu |
+| Brandon Parkansky | bpar@seas.upenn.edu     |
+
+
 ## Demo Video
 Watch our final project demonstration below.
 
@@ -14,11 +19,13 @@ Watch our final project demonstration below.
 
 
 ### Internal Electronics
-(https://drive.google.com/drive/folders/1iD0F-Pdt6Mc-L7aRFF9-XCKdbJgDcia5?dmr=1&ec=wgc-drive-%5Bmodule%5D-goto)
+Internals Tour: (https://drive.google.com/drive/folders/1iD0F-Pdt6Mc-L7aRFF9-XCKdbJgDcia5?dmr=1&ec=wgc-drive-%5Bmodule%5D-goto)
+<img width="565" height="820" alt="Screenshot 2026-04-28 at 11 12 24 PM" src="https://github.com/user-attachments/assets/7942b4a7-34d7-4abf-9a6c-f5e20195d17c" />
 
 
 ### Showcase Thumbnail (400x400)
-[Need 400x400 Image]
+<img width="200" height="200" alt="Screenshot 2026-04-28 at 11 16 1" src="https://github.com/user-attachments/assets/89e71c0b-1976-4333-a5f1-0501b3138f44" />
+
 
 ---
 
